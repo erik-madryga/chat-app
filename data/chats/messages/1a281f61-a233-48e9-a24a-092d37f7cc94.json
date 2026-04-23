@@ -1,0 +1,16 @@
+[
+  {
+    "id": "82eefee7-d5dc-4d6d-bff3-ef8d38bea03e",
+    "sessionId": "1a281f61-a233-48e9-a24a-092d37f7cc94",
+    "senderId": "f825c2e0-6d85-465b-95fe-b9b0239a0ba7",
+    "content": "hey man",
+    "timestamp": "2026-04-23T03:49:21.080Z"
+  },
+  {
+    "id": "0bb49884-622b-4441-b251-61721232fd4d",
+    "sessionId": "1a281f61-a233-48e9-a24a-092d37f7cc94",
+    "senderId": "f825c2e0-6d85-465b-95fe-b9b0239a0ba7",
+    "content": "whats up",
+    "timestamp": "2026-04-23T03:50:21.001Z"
+  }
+]

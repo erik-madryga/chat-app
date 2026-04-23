@@ -1,0 +1,35 @@
+{
+  "userId": "f81c5bc6-a250-45ac-86b5-d207e76bda93",
+  "sessions": [
+    {
+      "sessionId": "1a281f61-a233-48e9-a24a-092d37f7cc94",
+      "participantIds": [
+        "f81c5bc6-a250-45ac-86b5-d207e76bda93",
+        "f825c2e0-6d85-465b-95fe-b9b0239a0ba7"
+      ],
+      "lastMessagePreview": "whats up",
+      "messageCount": 2,
+      "updatedAt": "2026-04-23T03:50:21.001Z"
+    },
+    {
+      "sessionId": "c621914a-2931-495e-9348-9cf28f393e08",
+      "participantIds": [
+        "f81c5bc6-a250-45ac-86b5-d207e76bda93",
+        "f825c2e0-6d85-465b-95fe-b9b0239a0ba7"
+      ],
+      "lastMessagePreview": null,
+      "messageCount": 0,
+      "updatedAt": "2026-04-23T03:50:13.080Z"
+    },
+    {
+      "sessionId": "fc54cb4d-9c1e-4a09-a189-a3d1d7fa80b5",
+      "participantIds": [
+        "f81c5bc6-a250-45ac-86b5-d207e76bda93",
+        "f825c2e0-6d85-465b-95fe-b9b0239a0ba7"
+      ],
+      "lastMessagePreview": null,
+      "messageCount": 0,
+      "updatedAt": "2026-04-23T03:49:45.148Z"
+    }
+  ]
+}
