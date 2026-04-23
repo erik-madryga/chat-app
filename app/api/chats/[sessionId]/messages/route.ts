@@ -1,8 +1,12 @@
 import { verifyToken } from '../../../../../lib/auth'
 import { getSession, getMessages, postMessage } from '../../../../../lib/chatClient'
 
-export async function GET(req: Request, { params }: { params: { sessionId: string } }) {
-  const { sessionId } = params
+type RouteContext = {
+  params: Promise<{ sessionId: string }>
+}
+
+export async function GET(req: Request, context: RouteContext) {
+  const { sessionId } = await context.params
   const url = new URL(req.url)
   const limit = Number(url.searchParams.get('limit') || '50')
   const before = url.searchParams.get('before') || undefined
@@ -11,8 +15,8 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
   return new Response(JSON.stringify({ messages }), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
 
-export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
-  const { sessionId } = params
+export async function POST(req: Request, context: RouteContext) {
+  const { sessionId } = await context.params
   const cookieHeader = req.headers.get('cookie') || ''
   const match = cookieHeader.match(/(^|;\s*)token=([^;]+)/)
   const token = match ? match[2] : null

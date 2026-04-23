@@ -1,8 +1,12 @@
 import { getSession, getMessages } from '../../../../../lib/chatClient'
 import { verifyToken } from '../../../../../lib/auth'
 
-export async function GET(req: Request, { params }: { params: { sessionId: string } }) {
-  const { sessionId } = params
+type RouteContext = {
+  params: Promise<{ sessionId: string }>
+}
+
+export async function GET(req: Request, context: RouteContext) {
+  const { sessionId } = await context.params
   const cookieHeader = req.headers.get('cookie') || ''
   const match = cookieHeader.match(/(^|;\s*)token=([^;]+)/)
   const token = match ? match[2] : null
