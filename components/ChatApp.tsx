@@ -89,15 +89,6 @@ export default function ChatApp() {
     }
   }
 
-  async function handleSignOut() {
-    setLoading(true)
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-    setSessions([])
-    setActiveSessionId(null)
-    setAllUsers([])
-    router.push('/sign-in')
-  }
-
   async function handleSearchUsers() {
     if (userSearch.trim().length < 2) {
       setUserSearchResults([])
@@ -250,12 +241,11 @@ export default function ChatApp() {
     <div className="flex gap-4">
       <aside className="w-80 space-y-4">
         <div className="bg-white rounded shadow p-3">
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-3">
             <div>
               <div className="text-sm text-gray-500">Signed in as</div>
               <div className="font-medium">{user?.username}</div>
             </div>
-            <button onClick={handleSignOut} className="px-2 py-1 text-sm text-gray-600 rounded hover:bg-gray-100">Sign out</button>
           </div>
           <div>
             <input value={newUser} onChange={(e) => setNewUser(e.target.value)} placeholder="Start chat: username" className="w-full p-2 border rounded" />
