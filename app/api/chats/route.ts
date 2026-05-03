@@ -1,6 +1,7 @@
 import { readJSON } from '../../../lib/blobClient'
 import { verifyToken } from '../../../lib/auth'
 import { createSession, listSessionsForUser } from '../../../lib/chatClient'
+import { getConnectionStatus } from '../../../lib/connectionClient'
 
 export async function GET(req: Request) {
   const cookieHeader = req.headers.get('cookie') || ''
@@ -36,6 +37,16 @@ export async function POST(req: Request) {
   for (const uname of participantUsernames) {
     const found = users.find((u: any) => u.username.toLowerCase() === String(uname).toLowerCase())
     if (found) ids.push(found.id)
+  }
+
+  const existingSessions = await listSessionsForUser(payload.userId)
+  for (const id of ids) {
+    if (id === payload.userId) continue
+    const status = await getConnectionStatus(payload.userId, id)
+    const hasExistingChat = existingSessions.some((session: any) => (session.participantIds || []).includes(id))
+    if (status !== 'connected' && !hasExistingChat) {
+      return new Response(JSON.stringify({ message: 'You can only chat with connected users' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
   }
 
   // ensure the creator is included
