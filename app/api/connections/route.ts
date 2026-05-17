@@ -1,4 +1,4 @@
-import { verifyToken } from '../../../lib/auth'
+import { getUserIdFromRequest } from '../../../lib/auth'
 import { readJSON } from '../../../lib/blobClient'
 import { getConnectionSummary } from '../../../lib/connectionClient'
 import { listSessionsForUser } from '../../../lib/chatClient'
@@ -9,22 +9,17 @@ function safeUser(user: any) {
 }
 
 export async function GET(req: Request) {
-  const cookieHeader = req.headers.get('cookie') || ''
-  const match = cookieHeader.match(/(^|;\s*)token=([^;]+)/)
-  const token = match ? match[2] : null
-  if (!token) return new Response(JSON.stringify({ connectedUsers: [], incomingRequests: [], outgoingRequests: [] }), { status: 401, headers: { 'Content-Type': 'application/json' } })
-
-  const payload: any = verifyToken(token)
-  if (!payload || !payload.userId) return new Response(JSON.stringify({ connectedUsers: [], incomingRequests: [], outgoingRequests: [] }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+  const userId = getUserIdFromRequest(req)
+  if (!userId) return new Response(JSON.stringify({ connectedUsers: [], incomingRequests: [], outgoingRequests: [] }), { status: 401, headers: { 'Content-Type': 'application/json' } })
 
   const users = (await readJSON('users/users.json')) || []
   const usersById = new Map(users.map((user: any) => [user.id, user]))
-  const summary = await getConnectionSummary(payload.userId)
-  const sessions = await listSessionsForUser(payload.userId)
+  const summary = await getConnectionSummary(userId)
+  const sessions = await listSessionsForUser(userId)
   const connectedUserIds = new Set(summary.connectedUserIds)
   for (const session of sessions) {
     for (const participantId of session.participantIds || []) {
-      if (participantId !== payload.userId) connectedUserIds.add(participantId)
+      if (participantId !== userId) connectedUserIds.add(participantId)
     }
   }
 

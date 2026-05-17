@@ -1,5 +1,5 @@
 import { getSession, getMessages } from '../../../../../lib/chatClient'
-import { verifyToken } from '../../../../../lib/auth'
+import { getUserIdFromRequest } from '../../../../../lib/auth'
 
 type RouteContext = {
   params: Promise<{ sessionId: string }>
@@ -7,17 +7,12 @@ type RouteContext = {
 
 export async function GET(req: Request, context: RouteContext) {
   const { sessionId } = await context.params
-  const cookieHeader = req.headers.get('cookie') || ''
-  const match = cookieHeader.match(/(^|;\s*)token=([^;]+)/)
-  const token = match ? match[2] : null
-  if (!token) return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
-
-  const payload: any = verifyToken(token)
-  if (!payload || !payload.userId) return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+  const userId = getUserIdFromRequest(req)
+  if (!userId) return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
 
   const session = await getSession(sessionId)
   if (!session) return new Response(JSON.stringify({ message: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
-  if (!session.participantIds.includes(payload.userId)) return new Response(JSON.stringify({ message: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+  if (!session.participantIds.includes(userId)) return new Response(JSON.stringify({ message: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
 
   const encoder = new TextEncoder()
   let lastTimestamp: string | null = null
