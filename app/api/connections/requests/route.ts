@@ -1,22 +1,13 @@
-import { verifyToken } from '../../../../lib/auth'
+import { getUserIdFromRequest } from '../../../../lib/auth'
 import { cancelConnectionRequest, createConnectionRequest, respondToConnectionRequest } from '../../../../lib/connectionClient'
 import { readJSON } from '../../../../lib/blobClient'
 
-function getUserId(req: Request) {
-  const cookieHeader = req.headers.get('cookie') || ''
-  const match = cookieHeader.match(/(^|;\s*)token=([^;]+)/)
-  const token = match ? match[2] : null
-  if (!token) return null
-  const payload: any = verifyToken(token)
-  return payload?.userId || null
-}
-
 export async function POST(req: Request) {
-  const userId = getUserId(req)
+  const userId = getUserIdFromRequest(req)
   if (!userId) return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
 
   const body = await req.json()
-  const toUserId = body?.toUserId
+  const toUserId = typeof body?.toUserId === 'string' ? body.toUserId : ''
   if (!toUserId) return new Response(JSON.stringify({ message: 'Missing user' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
 
   try {
@@ -33,12 +24,12 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const userId = getUserId(req)
+  const userId = getUserIdFromRequest(req)
   if (!userId) return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
 
   const body = await req.json()
-  const requestId = body?.requestId
-  const action = body?.action
+  const requestId = typeof body?.requestId === 'string' ? body.requestId : ''
+  const action = typeof body?.action === 'string' ? body.action : ''
   if (!requestId || !['accept', 'decline', 'cancel'].includes(action)) return new Response(JSON.stringify({ message: 'Invalid request' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
 
   try {
