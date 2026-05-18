@@ -19,6 +19,15 @@ Why this repo is useful
 - Clear separation between client UI and server API logic, with typed contracts in `lib/types.ts`.
 - Designed to be easy to run locally for interviews or demos — minimal external setup required.
 
+<table>
+  <tr>
+    <td>
+      <img width="1275" height="717" alt="Screenshot 2026-05-18 at 3 28 41 PM" src="https://github.com/user-attachments/assets/23742300-b6bd-41ed-a007-2587f44de732" />
+    </td>
+  </tr>
+</table>
+
+
 Getting started (local development)
 
 Prerequisites
