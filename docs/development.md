@@ -1,18 +1,53 @@
 # Local Development
 
-Quick guide to get the project running locally and minimal notes to help other developers reproduce your environment.
+Guide to get the project running locally, with complete environment setup, dependency details, and common workflow recipes.
 
-Prerequisites
+## Setup Flowchart
 
-- Node: this repo includes a `.nvmrc` (Node `22.12.0`). Use `nvm use` or any Node manager to match the runtime.
-- Corepack + Yarn (the project uses Yarn 4 / Berry). If you don't have Corepack enabled, run:
+```mermaid
+flowchart TD
+    A["Clone repository"] --> B["Install Node.js"]
+    B --> C{"Using nvm?"}
+    C -- "Yes" --> D["nvm use<br/>(reads .nvmrc → Node 22.12.0)"]
+    C -- "No" --> E["Install Node 22.12.0 manually"]
+    D --> F["Enable Corepack"]
+    E --> F
+    F --> G["yarn install"]
+    G --> H["Configure .env.local"]
+    H --> I{"Need Google<br/>OAuth?"}
+    I -- "Yes" --> J["Set GOOGLE_CLIENT_ID<br/>+ GOOGLE_CLIENT_SECRET"]
+    I -- "No" --> K["Skip OAuth vars"]
+    J --> L{"Have Vercel<br/>Blob token?"}
+    K --> L
+    L -- "Yes" --> M["Set BLOB_READ_WRITE_TOKEN"]
+    L -- "No" --> N["Add FS fallback to<br/>blobClient.ts<br/>(see blob-storage.md)"]
+    M --> O["yarn dev"]
+    N --> O
+    O --> P["Open http://localhost:3000"]
+
+    style N fill:#f9e2af,stroke:#f2c55c
+```
+
+## Prerequisites
+
+| Requirement | Version | Notes |
+|---|---|---|
+| Node.js | `22.12.0` (pinned in `.nvmrc`) | Use `nvm use` to load the correct version |
+| Corepack | Bundled with Node | Must be enabled for Yarn 4 |
+| Yarn | `4.14.1` (pinned in `package.json`) | Managed by Corepack |
 
 ```bash
+# Load correct Node version
+nvm use
+
+# Enable Corepack (required once)
 corepack enable
+
+# If Yarn isn't set up yet
 yarn set version berry
 ```
 
-Install and run
+## Install and Run
 
 ```bash
 cd chat-app
@@ -22,50 +57,142 @@ yarn dev
 
 The app listens on `http://localhost:3000` by default.
 
-Build / type-check
+## Build / Type-Check
 
 ```bash
 yarn build
 ```
 
-Environment variables
+## Project Dependencies
 
-Create a `.env.local` file inside the `chat-app/` folder with the following minimal variables for local development:
+| Package | Purpose |
+|---|---|
+| `next` (v15) | App Router framework — server and client |
+| `react` / `react-dom` (v18) | UI rendering |
+| `@vercel/blob` | JSON document persistence (Vercel Blob storage) |
+| `bcryptjs` | Password hashing for signup/login |
+| `jsonwebtoken` | JWT creation and verification |
+| `uuid` | Unique ID generation for users, sessions, messages, requests |
+| `zustand` | State management (scaffolding — currently lightly used) |
+| `axios` | HTTP client for client-side API calls |
+| `@tailwindcss/postcss` | Tailwind CSS integration |
+
+## Environment Variables
+
+Create a `.env.local` file in the project root:
 
 ```env
-# required for token signing
+# Required — used to sign JWT session tokens
 JWT_SECRET=your_long_random_secret
 
-# optional: Google OAuth (only if you want to test OAuth flows)
+# Optional — Google OAuth (only if testing OAuth flows)
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 
-# optional: remote blob storage (Vercel Blob). When empty the repo includes local `data/` used as seed files.
+# Required — Vercel Blob storage token
+# The current blobClient.ts always uses @vercel/blob.
+# Without this token, readJSON/writeJSON calls will fail.
+# To use local data/ files instead, add a FS fallback (see docs/blob-storage.md).
 BLOB_READ_WRITE_TOKEN=...
 ```
 
-- `JWT_SECRET` — required to sign session JWTs in development. Do NOT use a short or predictable secret in production.
-- `GOOGLE_CLIENT_*` — required only if testing Google OAuth. Add a redirect URI for local testing: `http://localhost:3000/api/auth/google/callback`.
-- `BLOB_READ_WRITE_TOKEN` — optional. `lib/blobClient.ts` uses `@vercel/blob` when this is set.
+### Variable Reference
 
-Seed data and accounts
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `JWT_SECRET` | Yes (production) | `dev-secret` in non-production | Signs JWT session tokens. Use a strong, unique value in production. |
+| `GOOGLE_CLIENT_ID` | Only for OAuth | — | Google OAuth application client ID |
+| `GOOGLE_CLIENT_SECRET` | Only for OAuth | — | Google OAuth application secret |
+| `BLOB_READ_WRITE_TOKEN` | Yes (current impl.) | — | Auth token for `@vercel/blob`. Without this and without a filesystem fallback, storage operations will fail. |
 
-- A small set of seed files exists under `data/` (e.g. `data/users/users.json`, `data/chats/messages/`). Use `POST /api/auth/signup` to create local accounts or modify `data/users/users.json` directly for quick experiments.
+> **Important:** The current `lib/blobClient.ts` always calls `@vercel/blob`. The `data/` directory contains seed/reference data but is **not automatically used** as a fallback when `BLOB_READ_WRITE_TOKEN` is absent. See [blob-storage.md](blob-storage.md) for details and a suggested filesystem fallback.
 
-Resetting sample data
+## Seed Data and Accounts
+
+A small set of seed files exists under `data/`:
+
+| Path | Contents |
+|---|---|
+| `data/users/users.json` | 2 seed users: `test`, `test2` |
+| `data/chats/sessions/*.json` | 5 example sessions |
+| `data/chats/messages/*.json` | 2 message arrays |
+| `data/chats/user-state/*.json` | 2 user-state index files |
+
+> **Note:** `data/users.json` (top-level) is a legacy empty array and is **not used** by the application. The active user data path is `data/users/users.json`.
+
+### Creating Accounts
+
+Use `POST /api/auth/signup` to create local accounts:
+
+```bash
+curl -c cookies.txt -H "Content-Type: application/json" \
+  -X POST -d '{"username":"alice","password":"Pass123!"}' \
+  http://localhost:3000/api/auth/signup
+```
+
+### Resetting Sample Data
 
 If you modify files under `data/` and want to restore the original committed state:
 
 ```bash
-# reset all committed files under the data directory
 git checkout -- data/
 ```
 
-Debugging tips
+## Common Workflows
 
-- If you see authentication failures, make sure your browser is accepting cookies and that `JWT_SECRET` is set.
-- If the app fails to read or write JSON via the blob client and you don't intend to use remote blob storage, either set `BLOB_READ_WRITE_TOKEN` or add a small FS fallback in `lib/blobClient.ts` (see `docs/blob-storage.md`).
+### Create a user and start a chat
 
-Next steps for a dev machine
+```bash
+# 1. Sign up user A
+curl -c alice.txt -H "Content-Type: application/json" \
+  -X POST -d '{"username":"alice","password":"Pass123!"}' \
+  http://localhost:3000/api/auth/signup
 
-- (Optional) Add a small script to seed admin/test accounts via `curl` against `POST /api/auth/signup` so interviews and demos can sign in quickly.
+# 2. Sign up user B
+curl -c bob.txt -H "Content-Type: application/json" \
+  -X POST -d '{"username":"bob","password":"Pass456!"}' \
+  http://localhost:3000/api/auth/signup
+
+# 3. Alice sends connection request to Bob (need Bob's user ID from signup response)
+curl -b alice.txt -H "Content-Type: application/json" \
+  -X POST -d '{"toUserId":"<bob-user-id>"}' \
+  http://localhost:3000/api/connections/requests
+
+# 4. Bob accepts the request (need request ID from previous response)
+curl -b bob.txt -H "Content-Type: application/json" \
+  -X PATCH -d '{"requestId":"<request-id>","action":"accept"}' \
+  http://localhost:3000/api/connections/requests
+
+# 5. Alice starts a chat with Bob
+curl -b alice.txt -H "Content-Type: application/json" \
+  -X POST -d '{"participantUsernames":["bob"]}' \
+  http://localhost:3000/api/chats
+
+# 6. Alice sends a message (need session ID from previous response)
+curl -b alice.txt -H "Content-Type: application/json" \
+  -X POST -d '{"content":"Hello Bob!"}' \
+  http://localhost:3000/api/chats/<session-id>/messages
+```
+
+### Check connection status
+
+```bash
+# List connected users and pending requests
+curl -b alice.txt http://localhost:3000/api/connections
+
+# Search for a user
+curl -b alice.txt "http://localhost:3000/api/connections/search?q=bob"
+```
+
+## Debugging Tips
+
+- **Authentication failures**: Make sure your browser accepts cookies and `JWT_SECRET` is set in `.env.local`.
+- **Blob client errors**: If you see errors from `readJSON`/`writeJSON`, either set `BLOB_READ_WRITE_TOKEN` or add the filesystem fallback described in [blob-storage.md](blob-storage.md).
+- **Rate limit blocks**: The app applies in-memory rate limiting (5/min signup, 10/min login). If you hit `429`, wait a minute or restart the dev server.
+- **Node version issues**: Use `nvm use` to ensure you're running Node 22.12.0. Older versions may cause compatibility issues with Yarn 4 or Next.js 15 features.
+
+## Next Steps for a Dev Machine
+
+- Add a small seed/reset script to automate account creation via `curl` for demos and interviews
+- Consider implementing the filesystem fallback in `blobClient.ts` for offline local development
+- Set up Google OAuth credentials if you need to test the full auth flow
