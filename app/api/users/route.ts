@@ -21,7 +21,8 @@ export async function GET(req: Request) {
     .filter((user: any) => connectedUserIds.has(user.id))
     .map((user: any) => ({
       id: user.id,
-      username: user.username
+      username: user.username,
+      email: user.email || null
     }))
 
   return new Response(JSON.stringify({ users: safeUsers }), { status: 200, headers: { 'Content-Type': 'application/json' } })
