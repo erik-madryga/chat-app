@@ -9,6 +9,11 @@ export async function GET(req: Request) {
   const user = users.find((u: any) => u.id === userId)
   if (!user) return new Response(JSON.stringify({ user: null }), { status: 401, headers: { 'Content-Type': 'application/json' } })
 
-  const safeUser = { id: user.id, username: user.username }
+  const safeUser = {
+    id: user.id,
+    username: user.username,
+    googleCalendarConnected: !!user.googleCalendarConnected,
+    authProvider: user.authProvider || 'password'
+  }
   return new Response(JSON.stringify({ user: safeUser }), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }

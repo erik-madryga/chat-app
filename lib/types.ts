@@ -5,5 +5,8 @@ export interface User {
   email?: string
   googleId?: string
   authProvider?: 'password' | 'google' | 'password_google'
+  googleAccessToken?: string
+  googleRefreshToken?: string
+  googleCalendarConnected?: boolean
   createdAt: string
 }

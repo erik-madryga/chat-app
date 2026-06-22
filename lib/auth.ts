@@ -39,10 +39,10 @@ export function getUserIdFromRequest(req: Request) {
 
 export function createSessionCookie(token: string, maxAge = COOKIE_MAX_AGE) {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
-  return `token=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`
+  return `token=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`
 }
 
 export function clearSessionCookie() {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
-  return `token=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`
+  return `token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
 }

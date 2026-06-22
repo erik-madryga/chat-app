@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import useMessages from '../hooks/useMessages'
+import CalendarEventModal from './CalendarEventModal'
 
 type SessionSummary = { sessionId: string; participantIds: string[]; lastMessagePreview?: string; updatedAt?: string; messageCount?: number }
 type ConnectionRequest = { id: string; fromUser?: any; toUser?: any }
@@ -24,6 +25,8 @@ export default function ChatApp() {
   const [connectingUserIds, setConnectingUserIds] = useState<string[]>([])
   const [respondingRequestIds, setRespondingRequestIds] = useState<string[]>([])
   const [cancelingRequestIds, setCancelingRequestIds] = useState<string[]>([])
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false)
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([])
 
   const { messages, sendMessage } = useMessages(activeSessionId, user?.id)
 
@@ -36,6 +39,7 @@ export default function ChatApp() {
         setUser(meData.user)
         await loadSessions()
         await loadConnections()
+        await loadCalendarEvents()
       } catch (err) {
         router.push('/sign-in')
       } finally {
@@ -45,12 +49,55 @@ export default function ChatApp() {
     init()
   }, [router])
 
+  // Listen for Server-Sent Events updates
+  useEffect(() => {
+    if (!user) return
+
+    const es = new EventSource('/api/user/stream')
+
+    es.addEventListener('sessions', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setSessions(data.sessions || [])
+        setActiveSessionId(current => {
+          if ((data.sessions || []).length > 0 && !current) return data.sessions[0].sessionId
+          return current
+        })
+      } catch (err) {}
+    })
+
+    es.addEventListener('connections', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setAllUsers(data.connectedUsers || [])
+        setIncomingRequests(data.incomingRequests || [])
+        setOutgoingRequests(data.outgoingRequests || [])
+      } catch (err) {}
+    })
+
+    es.addEventListener('events', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setCalendarEvents(data.events || [])
+      } catch (err) {}
+    })
+
+    es.addEventListener('error', () => {
+      // Browser will auto-reconnect
+    })
+
+    return () => es.close()
+  }, [user])
+
   async function loadSessions() {
     const res = await fetch('/api/chats', { credentials: 'include' })
     if (!res.ok) return
     const data = await res.json()
     setSessions(data.sessions || [])
-    if ((data.sessions || []).length > 0 && !activeSessionId) setActiveSessionId(data.sessions[0].sessionId)
+    setActiveSessionId(current => {
+      if ((data.sessions || []).length > 0 && !current) return data.sessions[0].sessionId
+      return current
+    })
   }
 
   async function loadConnections() {
@@ -60,6 +107,15 @@ export default function ChatApp() {
     setAllUsers(data.connectedUsers || [])
     setIncomingRequests(data.incomingRequests || [])
     setOutgoingRequests(data.outgoingRequests || [])
+  }
+
+  async function loadCalendarEvents() {
+    try {
+      const res = await fetch('/api/calendar/events', { credentials: 'include' })
+      if (!res.ok) return
+      const data = await res.json()
+      setCalendarEvents(data.events || [])
+    } catch {}
   }
 
   async function handleCreateSession() {
@@ -286,6 +342,39 @@ export default function ChatApp() {
         </div>
 
         <div className="bg-white rounded shadow p-3">
+          <div className="text-sm font-semibold text-gray-700 mb-2">Upcoming events</div>
+          <div className="space-y-2 max-h-72 overflow-auto">
+            {calendarEvents.length === 0 && <div className="text-sm text-gray-500">No upcoming events</div>}
+            {calendarEvents.map((event) => (
+              <div key={event.id} className="w-full text-left p-2 rounded bg-gray-50">
+                <div className="text-sm font-medium truncate">{event.title}</div>
+                <div className="text-xs text-gray-500">
+                  {new Date(event.startDateTime).toLocaleString([], {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })}
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                  <span>{event.attendees?.length || 0} attendees</span>
+                  {event.googleEventLink && (
+                    <a
+                      href={event.googleEventLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      Calendar ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded shadow p-3">
           <div className="text-sm font-semibold text-gray-700 mb-2">Users</div>
           <div className="space-y-1 max-h-72 overflow-auto">
             {availableUsers.map(u => (
@@ -353,6 +442,23 @@ export default function ChatApp() {
       </aside>
 
       <section className="flex-1 bg-white rounded shadow p-4 flex flex-col">
+        {activeSessionId && (
+          <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-3">
+            <div className="text-sm font-medium text-gray-700">
+              {activeChats.find((c) => c.session.sessionId === activeSessionId)?.name || 'Chat'}
+            </div>
+            <button
+              onClick={() => setCalendarModalOpen(true)}
+              className="flex items-center gap-1.5 rounded border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              title="Schedule an event"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Schedule
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-auto space-y-3 p-2">
           {(!messages || messages.length === 0) && <div className="text-sm text-gray-500">No messages yet</div>}
           {messages.map((m: any) => (
@@ -373,6 +479,19 @@ export default function ChatApp() {
           </div>
         </div>
       </section>
+      <CalendarEventModal
+        isOpen={calendarModalOpen}
+        onClose={() => setCalendarModalOpen(false)}
+        onCreated={() => loadCalendarEvents()}
+        chatParticipantIds={
+          activeSessionId
+            ? sessions.find((s) => s.sessionId === activeSessionId)?.participantIds.filter((id) => id !== user?.id) || []
+            : []
+        }
+        connectedUsers={availableUsers}
+        googleCalendarConnected={!!user?.googleCalendarConnected}
+        authProvider={user?.authProvider || 'password'}
+      />
     </div>
   )
 }
