@@ -49,12 +49,55 @@ export default function ChatApp() {
     init()
   }, [router])
 
+  // Listen for Server-Sent Events updates
+  useEffect(() => {
+    if (!user) return
+
+    const es = new EventSource('/api/user/stream')
+
+    es.addEventListener('sessions', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setSessions(data.sessions || [])
+        setActiveSessionId(current => {
+          if ((data.sessions || []).length > 0 && !current) return data.sessions[0].sessionId
+          return current
+        })
+      } catch (err) {}
+    })
+
+    es.addEventListener('connections', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setAllUsers(data.connectedUsers || [])
+        setIncomingRequests(data.incomingRequests || [])
+        setOutgoingRequests(data.outgoingRequests || [])
+      } catch (err) {}
+    })
+
+    es.addEventListener('events', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setCalendarEvents(data.events || [])
+      } catch (err) {}
+    })
+
+    es.addEventListener('error', () => {
+      // Browser will auto-reconnect
+    })
+
+    return () => es.close()
+  }, [user])
+
   async function loadSessions() {
     const res = await fetch('/api/chats', { credentials: 'include' })
     if (!res.ok) return
     const data = await res.json()
     setSessions(data.sessions || [])
-    if ((data.sessions || []).length > 0 && !activeSessionId) setActiveSessionId(data.sessions[0].sessionId)
+    setActiveSessionId(current => {
+      if ((data.sessions || []).length > 0 && !current) return data.sessions[0].sessionId
+      return current
+    })
   }
 
   async function loadConnections() {
@@ -294,6 +337,39 @@ export default function ChatApp() {
                 <div className="text-sm font-medium">{name}</div>
                 <div className="text-xs text-gray-500 truncate">{session.lastMessagePreview || 'No messages yet'}</div>
               </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded shadow p-3">
+          <div className="text-sm font-semibold text-gray-700 mb-2">Upcoming events</div>
+          <div className="space-y-2 max-h-72 overflow-auto">
+            {calendarEvents.length === 0 && <div className="text-sm text-gray-500">No upcoming events</div>}
+            {calendarEvents.map((event) => (
+              <div key={event.id} className="w-full text-left p-2 rounded bg-gray-50">
+                <div className="text-sm font-medium truncate">{event.title}</div>
+                <div className="text-xs text-gray-500">
+                  {new Date(event.startDateTime).toLocaleString([], {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })}
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                  <span>{event.attendees?.length || 0} attendees</span>
+                  {event.googleEventLink && (
+                    <a
+                      href={event.googleEventLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      Calendar ↗
+                    </a>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
