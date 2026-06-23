@@ -49,44 +49,27 @@ export default function ChatApp() {
     init()
   }, [router])
 
-  // Listen for Server-Sent Events updates
+  // Use an efficient fetch-on-focus and slow polling strategy
+  // to avoid hitting Vercel Blob limits
   useEffect(() => {
     if (!user) return
 
-    const es = new EventSource('/api/user/stream')
+    function fetchAll() {
+      loadCalendarEvents()
+      loadSessions()
+      loadConnections()
+    }
 
-    es.addEventListener('sessions', (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        setSessions(data.sessions || [])
-        setActiveSessionId(current => {
-          if ((data.sessions || []).length > 0 && !current) return data.sessions[0].sessionId
-          return current
-        })
-      } catch (err) {}
-    })
+    // Refresh when the user switches back to this tab
+    window.addEventListener('focus', fetchAll)
 
-    es.addEventListener('connections', (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        setAllUsers(data.connectedUsers || [])
-        setIncomingRequests(data.incomingRequests || [])
-        setOutgoingRequests(data.outgoingRequests || [])
-      } catch (err) {}
-    })
+    // And refresh slowly every 60 seconds just in case
+    const interval = setInterval(fetchAll, 60000)
 
-    es.addEventListener('events', (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        setCalendarEvents(data.events || [])
-      } catch (err) {}
-    })
-
-    es.addEventListener('error', () => {
-      // Browser will auto-reconnect
-    })
-
-    return () => es.close()
+    return () => {
+      window.removeEventListener('focus', fetchAll)
+      clearInterval(interval)
+    }
   }, [user])
 
   async function loadSessions() {
